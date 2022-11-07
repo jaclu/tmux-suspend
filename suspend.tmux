@@ -2,10 +2,20 @@
 
 set -e
 
+#
+#  I use an env var TMUX_BIN to point at the used tmux, defined in my
+#  tmux.conf, in order to pick the version matching the server running,
+#  or when the tmux bin is in fact tmate :)
+#  If not found, it is set to whatever is in PATH, so should have no negative
+#  impact. In all calls to tmux I use $TMUX_BIN instead in the rest of this
+#  plugin.
+#
+[ -z "$TMUX_BIN" ] && TMUX_BIN="tmux"
+
 declare -r CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 tmux_option() {
-  local -r option=$(tmux show-option -gqv "$1")
+  local -r option=$($TMUX_BIN show-option -gqv "$1")
   local -r fallback="$2"
   echo "${option:-$fallback}"
 }
@@ -28,8 +38,8 @@ init_tmux_suspend() {
   local -r on_resume_command=$(tmux_option "$on_resume_command_config" "$default_on_resume_command")
   local -r on_suspend_command=$(tmux_option "$on_suspend_command_config" "$default_on_suspend_command")
 
-  tmux bind -Troot "$KEY" run-shell "$CURRENT_DIR/scripts/suspend.sh \"$on_suspend_command\" \"$suspended_options\""
-  tmux bind -Tsuspended "$KEY" run-shell "$CURRENT_DIR/scripts/resume.sh \"$on_resume_command\""
+  $TMUX_BIN bind -Troot "$KEY" run-shell "$CURRENT_DIR/scripts/suspend.sh \"$on_suspend_command\" \"$suspended_options\""
+  $TMUX_BIN bind -Tsuspended "$KEY" run-shell "$CURRENT_DIR/scripts/resume.sh \"$on_resume_command\""
 }
 
 init_tmux_suspend

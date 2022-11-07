@@ -2,6 +2,16 @@
 
 set -eu
 
+#
+#  I use an env var TMUX_BIN to point at the used tmux, defined in my
+#  tmux.conf, in order to pick the version matching the server running,
+#  or when the tmux bin is in fact tmate :)
+#  If not found, it is set to whatever is in PATH, so should have no negative
+#  impact. In all calls to tmux I use $TMUX_BIN instead in the rest of this
+#  plugin.
+#
+[ -z "$TMUX_BIN" ] && TMUX_BIN="tmux"
+
 set_options_for_suspended_state() {
   local -r escaped_delim="${RANDOM}${RANDOM}${RANDOM}"
 
@@ -25,26 +35,26 @@ set_options_for_suspended_state() {
     value="${item#*:}"
     value="${value//${escaped_delim}/,}"
 
-    has_value="$(tmux show-options -qv${flags} "${name}" | wc -l | xargs)"
+    has_value="$($TMUX_BIN show-options -qv${flags} "${name}" | wc -l | xargs)"
     preserved_flags="${flags}"
     if [[ "${has_value}" = "0" ]]; then
       preserved_flags="${preserved_flags}u"
     fi
-    preserved_value="$(tmux show-options -qv${flags} "${name}")"
+    preserved_value="$($TMUX_BIN show-options -qv${flags} "${name}")"
     resumed_options="${resumed_options},${name}:${preserved_flags}:${preserved_value//,/\\,}"
 
-    tmux set-option -q${flags} "${name}" "${value}"
+    $TMUX_BIN set-option -q${flags} "${name}" "${value}"
   done
 
-  tmux set-option -q '@suspend_resumed_options' "${resumed_options}"
+  $TMUX_BIN set-option -q '@suspend_resumed_options' "${resumed_options}"
 }
 
 declare -r on_suspend_command="${1}"
 declare -r suspended_options="${2}"
 
-tmux set-option -q '@suspend_prefix' "$(tmux show-option -qv prefix)"
+$TMUX_BIN set-option -q '@suspend_prefix' "$($TMUX_BIN show-option -qv prefix)"
 
-tmux set-option -q prefix none \; set-option key-table suspended \; \
+$TMUX_BIN set-option -q prefix none \; set-option key-table suspended \; \
   if-shell -F '#{pane_in_mode}' 'send-keys -X cancel' \; \
   if-shell -F '#{pane_synchronized}' 'set synchronize-panes off'
 
@@ -52,4 +62,4 @@ set_options_for_suspended_state "${suspended_options}"
 
 eval "${on_suspend_command}"
 
-tmux refresh-client -S
+$TMUX_BIN refresh-client -S
